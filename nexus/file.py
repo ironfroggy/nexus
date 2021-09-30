@@ -106,10 +106,8 @@ class NexusFile:
         if op in 'NUID':
             record = self._parseRecordData(linedata)
             recordId = record.id
-            if op == 'N':
-                self.records[record.id] = record
-            elif op == 'U':
-                self.records.get(record.id, record).update(record)
+            if op in 'NU':
+                self.records.setdefault(record.id, record).update(record)
             elif op == 'I':
                 if record.id in self.records:
                     for key, value in record.items():
