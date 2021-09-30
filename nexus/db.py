@@ -1,53 +1,49 @@
 from __future__ import annotations
-from nexus import NexusBlock
+from nexus.file import NexusFile, Record
+
 
 from typing import Iterable
 from enum import Enum
+import os
+import uuid
 
 
-class BlockType(Enum):
-    META = 0
-    DATA = 1
-    INDEX = 2
+class NexusDB:
+    dirname: str
 
+    def __init__(self, dirname: str) -> None:
+        self.dirname = dirname
+        self._device = str(uuid.uuid1(uuid.getnode(), 0))[24:]    
 
-class NexusFile:
-    path: str
-
-    def __init__(self, path):
-        self.path = path
-        self.blockSize = 512
-    
-    def readBlock(self, index) -> bytes:
-        f = open(self.path, "rb")
-        f.seek(self.blockSize * index)
-        return f.read(self.blockSize)
-    
-    def addBlock(self, blockData):
-        assert self.blockSize == len(blockData)
-        f = open(self.path, "ab")
-        f.write(blockData)
-    
-    def iterPages(self): # -> Iterable[NexusPage]:
-        raise NotImplementedError()
-    
-    def createPage(self, title): # -> NexusPage:
-        raise NotImplementedError()
-
-
-class NexusFileBlock:
-    nexusFile: NexusFile
-    index: int
-    blockType: BlockType
-
-
-class MetaBlock(NexusBlock):
-    blockType = BlockType.META
-
-    nexusVersion: int = 1
-    nexusSchema: int = 1
-
-    def toBytes(self):
-        return [
-            (self.nexusVersion, "")
+        self._write_file_path = os.path.join(dirname, f"{self._device}.nexus")
+        self._read_file_paths = [
+            os.path.join(dirname, f"{filename}")
+            for filename in os.listdir(dirname)
         ]
+    
+    def _openReadFiles(self):
+        return [NexusFile(path, "r") for path in self._read_file_paths]
+    
+    def findAllOfRecordsEntries(self, recordId):
+        entries = []
+        for nf in self._openReadFiles():
+            nf.readAll()
+            record = nf.records.get(recordId)
+            if record is not None:
+                entries.append(record)
+        return entries
+    
+    def combineRecord(self, recordId):
+        entries = self.findAllOfRecordsEntries(recordId)
+        record = Record()
+        record.id = recordId
+        for entry in entries:
+            record.update(entry)
+        return record
+    
+    def get(self, recordId, key=None):
+        record = self.combineRecord(recordId)
+        if key:
+            return record[key]
+        else:
+            return record

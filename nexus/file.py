@@ -43,6 +43,7 @@ class NexusFile:
     records: typing.Mapping[str, typing.Mapping[str, typing.Any]]
 
     def __init__(self, filename: str, mode: str = "a") -> None:
+        self._filename = filename
         self._file = open(filename, mode)
         self._device = str(uuid.uuid1(uuid.getnode(), 0))[24:]
 
