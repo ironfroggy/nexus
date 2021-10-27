@@ -1,7 +1,9 @@
 import io
+import os
 import re
 import typing
 import uuid
+from time import time_ns
 
 R_KEY = re.compile(r'(\w+)')
 R_ID = re.compile(r'^[-0-9a-f]+')
@@ -44,15 +46,13 @@ class NexusFile:
 
     def __init__(self, filename: str, mode: str = "a") -> None:
         self._filename = filename
-        self._file = open(filename, mode)
         self._device = str(uuid.uuid1(uuid.getnode(), 0))[24:]
 
-        self.records = {}
-
-        if mode[0] == 'w':
+        is_new = not os.path.exists(filename)
+        if is_new:
             # new file, write header
             self._id = uuid.uuid4()
-            self._file.writelines([
+            open(filename, "w").writelines([
                 '* 0 format=nexus\n',
                 '* 0 encoding=utf8\n',
                 '* 0 version=0\n',
@@ -60,6 +60,10 @@ class NexusFile:
                 f'* 0 device={self._device}\n',
                 f'* 0 fileid={str(self._id)}\n',
             ])
+
+        self._file = open(filename, mode)
+        self.records = {}
+            
     
     def close(self):
         self._file.close()
@@ -69,7 +73,9 @@ class NexusFile:
         self.records[recordId] = dict(data)
 
         buffer = [
-            'N 0 ',
+            'N ',
+            str(time_ns()),
+            ' ',
             recordId,
             ' ',
         ]

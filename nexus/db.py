@@ -12,11 +12,13 @@ class NexusDB:
     dirname: str
 
     def __init__(self, dirname: str) -> None:
+        if not os.path.exists(dirname):
+            os.mkdir(dirname)
         self.dirname = dirname
         self._device = str(uuid.uuid1(uuid.getnode(), 0))[24:]    
 
         self._write_file_path = os.path.join(dirname, f"{self._device}.nexus")
-        self._read_file_paths = [
+        self._read_file_paths = [self._write_file_path] + [
             os.path.join(dirname, f"{filename}")
             for filename in os.listdir(dirname)
         ]
@@ -47,3 +49,8 @@ class NexusDB:
             return record[key]
         else:
             return record
+    
+    def set(self, recordId, data):
+        nf = NexusFile(self._write_file_path)
+        nf.writeRecord(recordId, data)
+        nf.close()

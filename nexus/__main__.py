@@ -30,24 +30,29 @@ if args.command in RECORD_COMMANDS:
         data[key] = value
 
     from nexus.file import NexusFile
+    from nexus.db import NexusDB
 
     if args.command == 'get':
         mode = 'r'
     else:
         mode = 'a'
 
-    nf = NexusFile(args.path, mode)
+    nf = NexusDB(args.path)
     if args.command == 'set':
-        nf.writeRecord(recordArgs.id, data)
+        nf.set(recordArgs.id, data)
     elif args.command == 'get':
-        nf.readAll()
+        # nf.readAll()
         if data:
             for key in data:
-                if key in nf.records[recordArgs.id]:
-                    print(nf.records[recordArgs.id][key])
+                print(nf.get(recordArgs.id, key))
+                # if key in nf.records[recordArgs.id]:
+                #     print(nf.records[recordArgs.id][key])
         else:
-            for key in nf.records[recordArgs.id]:
-                print(key, '=', nf.records[recordArgs.id][key])
+            record = nf.get(recordArgs.id)
+            for key in record:
+                print(key, '=', record[key])
+            # for key in nf.records[recordArgs.id]:
+            #     print(key, '=', nf.records[recordArgs.id][key])
 else:
     recordArgs = None
 
