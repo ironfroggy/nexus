@@ -26,6 +26,13 @@ class NexusDB:
     def _openReadFiles(self):
         return [NexusFile(path, "r") for path in self._read_file_paths]
     
+    def getRecordIds(self):
+        id_set = set()
+        for nf in self._openReadFiles():
+            nf.readAll()
+            id_set.update(nf.records.keys())
+        return id_set
+    
     def findAllOfRecordsEntries(self, recordId):
         entries = []
         for nf in self._openReadFiles():

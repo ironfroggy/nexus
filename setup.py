@@ -5,7 +5,7 @@ setup(
     packages=['nexus'],
     entry_points={
         'console_scripts': [
-            'nexus=nexus:main',
+            'nexus=nexus.main:main',
         ],
     },
 )
