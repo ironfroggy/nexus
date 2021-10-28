@@ -12,11 +12,12 @@ RECORD_COMMANDS = [
 
 
 def printRecord(nf, recordId, fields=None):
-    if fields is None:
+    if not fields:
         print(recordId)
     else:
         record = nf.get(recordId)
-        print("\t".join(record.get(field, "") for field in fields))
+        values = "\t".join(record.get(field, "") for field in fields)
+        print(f"{recordId}\t{values}")
 
 
 def main():
