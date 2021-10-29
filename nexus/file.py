@@ -3,7 +3,9 @@ import os
 import re
 import typing
 import uuid
-from time import time_ns
+
+from .utils import timestamp
+
 
 R_KEY = re.compile(r'(\w+)')
 R_ID = re.compile(r'^[-0-9a-f]+')
@@ -52,13 +54,14 @@ class NexusFile:
         if is_new:
             # new file, write header
             self._id = uuid.uuid4()
+            ts = timestamp()
             open(filename, "w").writelines([
-                '* 0 format=nexus\n',
-                '* 0 encoding=utf8\n',
-                '* 0 version=0\n',
-                '* 0 revision=0\n',
-                f'* 0 device={self._device}\n',
-                f'* 0 fileid={str(self._id)}\n',
+                f'* {ts} format=nexus\n',
+                f'* {ts} encoding=utf8\n',
+                f'* {ts} version=0\n',
+                f'* {ts} revision=0\n',
+                f'* {ts} device={self._device}\n',
+                f'* {ts} fileid={str(self._id)}\n',
             ])
 
         self._file = open(filename, mode)
@@ -74,7 +77,7 @@ class NexusFile:
 
         buffer = [
             'N ',
-            str(time_ns()),
+            str(timestamp()),
             ' ',
             recordId,
             ' ',
