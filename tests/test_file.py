@@ -14,9 +14,22 @@ def test_read_string():
     assert record["foo"] == "Hello, World!"
     assert nf.records["1"]["foo"] == "Hello, World!"
 
+def test_read_multiple():
+    f = open("test.nexus", "w")
+    f.write('N 0 1 foo="Hello, World!" bar="Goodbye, World!"')
+    f.close()
+
+    nf = NexusFile("test.nexus", "r")
+    record = nf.readRecord()
+    assert record.id == "1"
+    assert record["foo"] == "Hello, World!"
+    assert record["bar"] == "Goodbye, World!"
+    assert nf.records["1"]["foo"] == "Hello, World!"
+    assert nf.records["1"]["bar"] == "Goodbye, World!"
+
 def test_read_string_esc_quote():
     f = open("test.nexus", "w")
-    f.write('N 0 1 foo="Hello, \"Bob\"!"')
+    f.write('N 0 1 foo="Hello, \\"Bob\\"!"')
     f.close()
 
     nf = NexusFile("test.nexus", "r")

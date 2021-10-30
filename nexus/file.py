@@ -5,6 +5,7 @@ import typing
 import uuid
 
 from .utils import timestamp
+from . import parser
 
 
 R_KEY = re.compile(r'(\w+)')
@@ -56,12 +57,12 @@ class NexusFile:
             self._id = uuid.uuid4()
             ts = timestamp()
             open(filename, "w").writelines([
-                f'* {ts} format=nexus\n',
-                f'* {ts} encoding=utf8\n',
-                f'* {ts} version=0\n',
-                f'* {ts} revision=0\n',
-                f'* {ts} device={self._device}\n',
-                f'* {ts} fileid={str(self._id)}\n',
+                f'* format=nexus\n',
+                f'* encoding=utf8\n',
+                f'* version=0\n',
+                f'* revision=0\n',
+                f'* device={self._device}\n',
+                f'* fileid={str(self._id)}\n',
             ])
 
         self._file = open(filename, mode)
@@ -98,21 +99,16 @@ class NexusFile:
         line = ''.join(buffer)
         self._file.write(line)
     
-    def _matchNext(self, line, idx):
-        m = re.match('(\w+)="((?:[^"]|.)*)"', line[idx:])
-        if m is None:
-            m = re.match('(\w+)=([^ ]+)', line[idx:])
-        return m
-    
     def _parseOpLine(self, line):
+        if line[0] == '*':
+            ts, linedata = line.split(' ', 1)
+            return '*', ts, linedata.strip()
         try:
             op, ts, linedata = line.split(' ', 2)
         except ValueError:
             raise ValueError("Invalid line: %r" % (line,))
         ts = int(ts)
         recordId = None
-        if op == '*':
-            return op, ts, linedata.strip()
         if op in 'NUID':
             record = self._parseRecordData(linedata)
             recordId = record.id
@@ -129,18 +125,37 @@ class NexusFile:
         return op, ts, recordId
     
     def _parseRecordData(self, line):
+        p = parser.Parser(line)
         record = Record()
-        idx = line.index(' ')
-        record.id = line[:idx]
-        idx += 1
-        m = self._matchNext(line, idx)
-        while m is not None:
-            key, value = m.groups()
-            if re.match('\d+', value):
-                value = int(value)
+
+        t, record.id = p.readToken([parser.TOKEN_TYPE.ID])
+
+        while p.remaining:
+            # End of line?
+            try:
+                t, n = p.readToken([parser.TOKEN_TYPE.LINEEND], advance=False)
+            except parser.ParserError:
+                pass
+            else:
+                break
+
+            _, key = p.readToken([parser.TOKEN_TYPE.KEY])
+            p.readToken([parser.TOKEN_TYPE.OP_EQ])
+            t, value = p.readToken([
+                parser.TOKEN_TYPE.STRING,
+                parser.TOKEN_TYPE.NUMBER,
+            ])
+
+            if t == parser.TOKEN_TYPE.STRING:
+                value = p.parseStringLiteral(value)
+            elif t == parser.TOKEN_TYPE.NUMBER:
+                value = float(value)
+                as_int = int(value)
+                if as_int == value:
+                    value = as_int 
+            
             record[key] = value
-            idx += m.end() - m.start()
-            m = self._matchNext(line, idx)
+
         return record
     
     def readRecord(self):
