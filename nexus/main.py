@@ -17,7 +17,7 @@ def printRecord(nf, recordId, fields=None):
         print(recordId)
     else:
         record = nf.get(recordId)
-        values = "\t".join(record.get(field, "") for field in fields)
+        values = "\t".join(str(record.get(field, "")) for field in fields)
         print(f"{recordId}\t{values}")
 
 
@@ -52,11 +52,44 @@ def main():
 
         nf = NexusDB(args.path)
         if args.command == 'find':
+            # TODO: Parse filters and apply to record search
+            from . import parser
+
+            filters = []
+            fields = []
+            for string in recordArgs.pairs:
+                p = parser.Parser(string)
+                tokens = p.readUntilEnd(parser.EVAL_TOKEN_TYPES)
+                if len(tokens) == 3:
+                    _, key = tokens[0]
+                    _, op = tokens[1]
+                    _, value = tokens[2]
+                    if op == '<':
+                        filter = lambda rec, key=key, value=value: rec.get(key) < float(value)
+                    elif op == '>':
+                        filter = lambda rec, key=key, value=value: rec.get(key) > float(value)
+                    elif op == '=':
+                        filter = lambda rec, key=key, value=value: str(rec.get(key)) == str(value)
+                    elif op == '~':
+                        filter = lambda rec, key=key, value=value: str(value) in str(rec.get(key))
+                    elif op == '~=':
+                        filter = lambda rec, key=key, value=value: str(rec.get(key)).startswith(str(value))
+                    elif op == '=~':
+                        filter = lambda rec, key=key, value=value: str(rec.get(key)).endswith(str(value))
+                    filters.append(filter)
+                else:
+                    fields.append(string)
+
             nf.readAll()
             from glob import fnmatch
             for recordId in nf.getRecordIds():
                 if recordId.startswith(recordArgs.id):
-                    printRecord(nf, recordId, recordArgs.pairs)
+                    ok = True
+                    for filter in filters:
+                        if not filter(nf.get(recordId)):
+                            ok = False
+                    if ok:
+                        printRecord(nf, recordId, fields)
         elif args.command == 'set':
             nf.set(recordArgs.id, data)
         elif args.command == 'inc':

@@ -19,6 +19,11 @@ class TOKEN_TYPE(Enum):
     LINEEND = auto()
 
     OP_EQ = auto()
+    OP_LT = auto()
+    OP_GT = auto()
+    OP_PRE = auto()
+    OP_POST = auto()
+    OP_IN = auto()
 
     ID = auto()
     KEY = auto()
@@ -26,9 +31,31 @@ class TOKEN_TYPE(Enum):
     NUMBER = auto()
 
 
+EVAL_TOKEN_TYPES = [
+    TOKEN_TYPE.KEY,
+
+    TOKEN_TYPE.OP_EQ,
+    TOKEN_TYPE.OP_LT,
+    TOKEN_TYPE.OP_GT,
+    TOKEN_TYPE.OP_PRE,
+    TOKEN_TYPE.OP_POST,
+    TOKEN_TYPE.OP_IN,
+
+    TOKEN_TYPE.STRING,
+    TOKEN_TYPE.NUMBER,
+]
+
+
 TOKENS = {
     TOKEN_TYPE.OP_EQ: R_TOKEN_EQ,
+    TOKEN_TYPE.OP_LT: compile(r'(<)'),
+    TOKEN_TYPE.OP_GT: compile(r'(>)'),
+    TOKEN_TYPE.OP_PRE: compile(r'(~=)'),
+    TOKEN_TYPE.OP_POST: compile(r'(=~)'),
+    TOKEN_TYPE.OP_IN: compile(r'(~)'),
+
     TOKEN_TYPE.ID: R_TOKEN_ID,
+    
     TOKEN_TYPE.KEY: R_TOKEN_KEY,
     TOKEN_TYPE.NUMBER: R_TOKEN_NUMBER,
     TOKEN_TYPE.STRING: R_TOKEN_STRING,
@@ -74,12 +101,12 @@ class Parser:
             snippet += '...'
         raise ParserError(f"No token found at {self.index} ({snippet!r})")
     
-    def readUntilEnd(self):
+    def readUntilEnd(self, acceptTokenTypes=None):
         tokens = []
-        tokenType, token = self.readToken()
+        tokenType, token = self.readToken(acceptTokenTypes)
         while tokenType != TOKEN_TYPE.STOP:
             tokens.append((tokenType, token))
-            tokenType, token = self.readToken()
+            tokenType, token = self.readToken(acceptTokenTypes)
         return tokens
     
     def parseStringLiteral(self, literal):
