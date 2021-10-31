@@ -33,25 +33,20 @@ class NexusDB:
     def readAll(self):
         ts = 0
         files = self._openReadFiles()
-        nextOps = [nf.parseNextRecord() for nf in files]
-        while not all(op is None for op in nextOps):
+        nextOps = [(nf, nf.parseNextRecord()) for nf in files]
+        while not all(op[1] is None for op in nextOps):
             # Find the next timestamp, read that line, advance that file
+            nextOps.sort(key=lambda op: op[1][1] if op[1] else float('inf'))
             lowestIdx = 0
-            lowestTS = float('inf')
-            for i, op in enumerate(nextOps):
-                if op:
-                    if op[1] < lowestTS:
-                        lowestIdx = i
-                        lowestTS = ts
             # Process operation
-            nf = files[lowestIdx]
-            op, ts, recordId, data = nextOps[lowestIdx]
+            nf = nextOps[lowestIdx][0]
+            op, ts, recordId, data = nextOps[lowestIdx][1]
             nf.applyOperation(op, self.records, recordId, data)
             # Advance the entry in nextOps
             try:
-                nextOps[lowestIdx] = files[lowestIdx].parseNextRecord()
+                nextOps[lowestIdx] = (nf, nf.parseNextRecord())
             except EndOfRecords:
-                nextOps[lowestIdx] = None
+                nextOps[lowestIdx] = (nf, None)
 
     def getRecordIds(self):
         id_set = set()

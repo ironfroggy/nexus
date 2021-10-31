@@ -19,6 +19,7 @@ class TOKEN_TYPE(Enum):
     LINEEND = auto()
 
     OP_EQ = auto()
+    OP_NE = auto()
     OP_LT = auto()
     OP_GT = auto()
     OP_PRE = auto()
@@ -35,6 +36,7 @@ EVAL_TOKEN_TYPES = [
     TOKEN_TYPE.KEY,
 
     TOKEN_TYPE.OP_EQ,
+    TOKEN_TYPE.OP_NE,
     TOKEN_TYPE.OP_LT,
     TOKEN_TYPE.OP_GT,
     TOKEN_TYPE.OP_PRE,
@@ -48,6 +50,7 @@ EVAL_TOKEN_TYPES = [
 
 TOKENS = {
     TOKEN_TYPE.OP_EQ: R_TOKEN_EQ,
+    TOKEN_TYPE.OP_NE: compile(r'(!=)'),
     TOKEN_TYPE.OP_LT: compile(r'(<)'),
     TOKEN_TYPE.OP_GT: compile(r'(>)'),
     TOKEN_TYPE.OP_PRE: compile(r'(~=)'),

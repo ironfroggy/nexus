@@ -1,8 +1,11 @@
 import argparse
+import base64
 import sys
+import uuid
 
 
 RECORD_COMMANDS = [
+    'create',
     'get',
     'set',
     'inc',
@@ -70,6 +73,8 @@ def main():
                         filter = lambda rec, key=key, value=value: rec.get(key) > float(value)
                     elif op == '=':
                         filter = lambda rec, key=key, value=value: str(rec.get(key)) == str(value)
+                    elif op == '!=':
+                        filter = lambda rec, key=key, value=value: str(rec.get(key)) != str(value)
                     elif op == '~':
                         filter = lambda rec, key=key, value=value: str(value) in str(rec.get(key))
                     elif op == '~=':
@@ -90,6 +95,13 @@ def main():
                             ok = False
                     if ok:
                         printRecord(nf, recordId, fields)
+        elif args.command == 'create':
+            if recordArgs.id.endswith('-'):
+                rndPostfix = base64.encodebytes(uuid.uuid4().bytes)[:-3].decode('ascii')
+                newId = recordArgs.id + rndPostfix
+            else:
+                newId = recordArgs.id 
+            nf.set(newId, data)
         elif args.command == 'set':
             nf.set(recordArgs.id, data)
         elif args.command == 'inc':
