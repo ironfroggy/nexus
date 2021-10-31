@@ -62,7 +62,7 @@ def test_read_all():
 
 def test_write_number():
     nf = NexusFile("test.nexus", "w")
-    nf.writeRecord("42", {"x": 42})
+    nf.set("42", {"x": 42})
     nf.close()
 
     f = open("test.nexus", "r")
@@ -70,9 +70,77 @@ def test_write_number():
         pass
     assert re.match(r"^N \d+ 42 x=42\n$", line)
 
+def test_inc_number():
+    nf = NexusFile("test.nexus", "w")
+    nf.set("42", {"x": 42})
+    nf.inc("42", {"x": 1})
+    nf.close()
+
+    nf = NexusFile("test.nexus", "r")
+    nf.readAll()
+    assert nf.records["42"]["x"] == 43
+
+
+def test_inc_new_number():
+    nf = NexusFile("test.nexus", "w")
+    nf.set("42", {"x": 42})
+    nf.inc("42", {"z": 1})
+    nf.close()
+
+    nf = NexusFile("test.nexus", "r")
+    nf.readAll()
+    assert nf.records["42"]["x"] == 42
+    assert nf.records["42"]["z"] == 1
+
+
+def test_dec_number():
+    nf = NexusFile("test.nexus", "w")
+    nf.set("42", {"x": 42})
+    nf.dec("42", {"x": 1})
+    nf.close()
+
+    nf = NexusFile("test.nexus", "r")
+    nf.readAll()
+    assert nf.records["42"]["x"] == 41
+
+
+def test_dec_new_number():
+    nf = NexusFile("test.nexus", "w")
+    nf.set("42", {"x": 42})
+    nf.dec("42", {"z": 1})
+    nf.close()
+
+    nf = NexusFile("test.nexus", "r")
+    nf.readAll()
+    assert nf.records["42"]["x"] == 42
+    assert nf.records["42"]["z"] == -1
+
+
+def test_delete_key():
+    nf = NexusFile("test.nexus", "w")
+    nf.set("42", {"x": 42, "z": 10})
+    nf.delete("42", ["x"])
+    nf.close()
+
+    nf = NexusFile("test.nexus", "r")
+    nf.readAll()
+    assert nf.records["42"] == {"z": 10}
+
+
+def test_delete_record():
+    nf = NexusFile("test.nexus", "w")
+    nf.set("42", {"x": 42, "z": 10})
+    nf.delete("42")
+    nf.close()
+
+    nf = NexusFile("test.nexus", "r")
+    nf.readAll()
+    assert "42" not in nf.records
+    
+
 def test_write_string():
     nf = NexusFile("test.nexus", "w")
-    nf.writeRecord("7", {"lucky": "Number Seven"})
+    nf.set("7", {"lucky": "Number Seven"})
     nf.close()
 
     f = open("test.nexus", "r")
@@ -83,7 +151,7 @@ def test_write_string():
 
 def test_write_string_w_quote():
     nf = NexusFile("test.nexus", "w")
-    nf.writeRecord("8", {"mobster": 'Billy "The Big One" McGee'})
+    nf.set("8", {"mobster": 'Billy "The Big One" McGee'})
     nf.close()
 
     f = open("test.nexus", "r")

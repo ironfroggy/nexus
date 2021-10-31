@@ -11,6 +11,7 @@ from . import parser
 R_KEY = re.compile(r'(\w+)')
 R_ID = re.compile(r'^[-0-9a-f]+')
 
+
 class Record(dict):
     id: str
 
@@ -72,32 +73,63 @@ class NexusFile:
     def close(self):
         self._file.close()
     
-    def writeRecord(self, recordId, data):
-        # TODO: Handle update
-        self.records[recordId] = dict(data)
-
+    def writeLine(self, recordId, op, data):
         buffer = [
-            'N ',
+            op,
+            ' ',
             str(timestamp()),
             ' ',
             recordId,
-            ' ',
         ]
-        for key, value in data.items():
-            assert re.match(R_KEY, key)
-            if isinstance(value, int):
-                enc = str(value)
-            elif isinstance(value, str):
-                enc = repr(value)
-                if enc[0] == "'":
-                    enc = '"' + enc[1:-1] + '"'
-            else:
-                raise ValueError(f"Cannot write '{value.__class__.__name__}' type values.")
-            buffer.extend((key, '=', enc, ' '))
+        if op == 'X':
+            buffer.append(' ')
+            if data:
+                for key in data:
+                    buffer.extend([key, ' '])
+        else:
+            buffer.append(' ')
+            for key, value in data.items():
+                assert re.match(R_KEY, key)
+                if isinstance(value, int):
+                    enc = str(value)
+                elif isinstance(value, str):
+                    enc = repr(value)
+                    if enc[0] == "'":
+                        enc = '"' + enc[1:-1] + '"'
+                else:
+                    raise ValueError(f"Cannot write '{value.__class__.__name__}' type values.")
+                buffer.extend((key, '=', enc, ' '))
         buffer.pop() # Remove the last space, not needed
         buffer.append('\n')
         line = ''.join(buffer)
         self._file.write(line)
+    
+    def set(self, recordId, data):
+        rec = self.records.setdefault(recordId, {})
+        rec.update(data)
+        self.writeLine(recordId, 'N', data)
+    
+    def inc(self, recordId, data):
+        rec = self.records.setdefault(recordId, {})
+        rec.update(data)
+        self.writeLine(recordId, 'I', data)
+
+    def dec(self, recordId, data):
+        rec = self.records.setdefault(recordId, {})
+        rec.update(data)
+        self.writeLine(recordId, 'D', data)
+    
+    def delete(self, recordId, keys=None):
+        self.writeLine(recordId, 'X', keys)
+    
+    def get(self, recordId, key=None):
+        if not self.records:
+            self.readAll()
+        record = self.records[recordId]
+        if key:
+            return record[key]
+        else:
+            return record
     
     def _parseOpLine(self, line):
         if line[0] == '*':
@@ -109,19 +141,38 @@ class NexusFile:
             raise ValueError("Invalid line: %r" % (line,))
         ts = int(ts)
         recordId = None
-        if op in 'NUID':
+        if op == 'X':
+            p = parser.Parser(linedata)
+            t, recordId = p.readToken([parser.TOKEN_TYPE.ID])
+            rec = self.records[recordId]
+            keysFound = False
+            while p.remaining:
+                t, key = p.readToken([parser.TOKEN_TYPE.KEY, parser.TOKEN_TYPE.LINEEND])
+                if t == parser.TOKEN_TYPE.LINEEND:
+                    break
+                else:
+                    keysFound = True
+                    rec.pop(key)
+            if not keysFound:
+                self.records.pop(recordId)
+            
+        elif op in 'NUID':
             record = self._parseRecordData(linedata)
             recordId = record.id
             if op in 'NU':
                 self.records.setdefault(record.id, record).update(record)
             elif op == 'I':
                 if record.id in self.records:
+                    rec = self.records[record.id]
                     for key, value in record.items():
-                        self.records[record.id][key] += value
+                        rec.setdefault(key, 0)
+                        rec[key] += value
             elif op == 'D':
                 if record.id in self.records:
+                    rec = self.records[record.id]
                     for key, value in record.items():
-                        self.records[record.id][key] -= value
+                        rec.setdefault(key, 0)
+                        rec[key] -= value
         return op, ts, recordId
     
     def _parseRecordData(self, line):
@@ -164,7 +215,7 @@ class NexusFile:
             op, ts, recordId = self._parseOpLine(line)
             if op == '*':
                 return True
-            return self.records[recordId]
+            return self.records.get(recordId, None)
     
     def readAll(self):
         while True:

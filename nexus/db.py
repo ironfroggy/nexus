@@ -59,5 +59,5 @@ class NexusDB:
     
     def set(self, recordId, data):
         nf = NexusFile(self._write_file_path)
-        nf.writeRecord(recordId, data)
+        nf.set(recordId, data)
         nf.close()
