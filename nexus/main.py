@@ -7,6 +7,7 @@ RECORD_COMMANDS = [
     'set',
     'inc',
     'dec',
+    'delete',
     'find',
 ]
 
@@ -51,20 +52,29 @@ def main():
 
         nf = NexusDB(args.path)
         if args.command == 'find':
+            nf.readAll()
             from glob import fnmatch
             for recordId in nf.getRecordIds():
                 if recordId.startswith(recordArgs.id):
                     printRecord(nf, recordId, recordArgs.pairs)
         elif args.command == 'set':
             nf.set(recordArgs.id, data)
+        elif args.command == 'inc':
+            nf.inc(recordArgs.id, data)
+        elif args.command == 'dec':
+            nf.dec(recordArgs.id, data)
+        elif args.command == 'delete':
+            nf.delete(recordArgs.id, data)
         elif args.command == 'get':
+            nf.readAll()
             if data:
                 for key in data:
                     print(nf.get(recordArgs.id, key))
             else:
                 record = nf.get(recordArgs.id)
-                for key in record:
-                    print(key, '=', record[key])
+                printRecord(nf, recordArgs.id, data.keys())
+                # for key in record:
+                #     print(key, '=', record[key])
     else:
         recordArgs = None
 

@@ -108,17 +108,33 @@ class NexusFile:
         line = ''.join(buffer)
         self._file.write(line)
     
+    def _stringToValue(self, string):
+        try:
+            return int(string)
+        except ValueError:
+            try:
+                return float(string)
+            except ValueError:
+                return string
+    
+    def _convertDictValues(self, data):
+        for key, value in data.items():
+            data[key] = self._stringToValue(value)
+    
     def set(self, recordId, data):
+        self._convertDictValues(data)
         rec = self.records.setdefault(recordId, {})
         rec.update(data)
         self.writeLine(recordId, 'N', data)
     
     def inc(self, recordId, data):
+        self._convertDictValues(data)
         rec = self.records.setdefault(recordId, {})
         rec.update(data)
         self.writeLine(recordId, 'I', data)
 
     def dec(self, recordId, data):
+        self._convertDictValues(data)
         rec = self.records.setdefault(recordId, {})
         rec.update(data)
         self.writeLine(recordId, 'D', data)
@@ -178,17 +194,17 @@ class NexusFile:
             rec.id = recordId
             rec.update(data)
         elif op == 'I':
-            if recordId in records:
-                rec = records[recordId]
-                for key, value in data.items():
-                    rec.setdefault(key, 0)
-                    rec[key] += data[key]
+            records.setdefault(recordId, Record())
+            rec = records[recordId]
+            for key, value in data.items():
+                rec.setdefault(key, 0)
+                rec[key] += data[key]
         elif op == 'D':
-            if recordId in records:
-                rec = records[recordId]
-                for key, value in data.items():
-                    rec.setdefault(key, 0)
-                    rec[key] -= data[key]
+            records.setdefault(recordId, Record())
+            rec = records[recordId]
+            for key, value in data.items():
+                rec.setdefault(key, 0)
+                rec[key] -= data[key]
     
     def _parseRecordData(self, line):
         p = parser.Parser(line)
