@@ -9,7 +9,7 @@ def test_read_string():
     f.close()
 
     nf = NexusFile("test.nexus", "r")
-    record = nf.readRecord()
+    ts, record = nf.readRecord()
     assert record.id == "1"
     assert record["foo"] == "Hello, World!"
     assert nf.records["1"]["foo"] == "Hello, World!"
@@ -20,7 +20,7 @@ def test_read_multiple():
     f.close()
 
     nf = NexusFile("test.nexus", "r")
-    record = nf.readRecord()
+    ts, record = nf.readRecord()
     assert record.id == "1"
     assert record["foo"] == "Hello, World!"
     assert record["bar"] == "Goodbye, World!"
@@ -33,7 +33,7 @@ def test_read_string_esc_quote():
     f.close()
 
     nf = NexusFile("test.nexus", "r")
-    record = nf.readRecord()
+    ts, record = nf.readRecord()
     assert record.id == "1"
     assert record["foo"] == 'Hello, "Bob"!'
     assert nf.records["1"]["foo"] == 'Hello, "Bob"!'
@@ -44,7 +44,7 @@ def test_read_number():
     f.close()
 
     nf = NexusFile("test.nexus", "r")
-    record = nf.readRecord()
+    ts, record = nf.readRecord()
     assert record.id == "1"
     assert record["x"] == 42
     assert nf.records["1"]["x"] == 42

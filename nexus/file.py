@@ -12,6 +12,10 @@ R_KEY = re.compile(r'(\w+)')
 R_ID = re.compile(r'^[-0-9a-f]+')
 
 
+class EndOfRecords(ValueError):
+    pass
+
+
 class Record(dict):
     id: str
 
@@ -134,52 +138,63 @@ class NexusFile:
     def _parseOpLine(self, line):
         if line[0] == '*':
             ts, linedata = line.split(' ', 1)
-            return '*', ts, linedata.strip()
+            return '*', 0, linedata.strip(), None
         try:
             op, ts, linedata = line.split(' ', 2)
         except ValueError:
             raise ValueError("Invalid line: %r" % (line,))
         ts = int(ts)
-        recordId = None
+        data = None
+        p = parser.Parser(linedata)
+        t, recordId = p.readToken([parser.TOKEN_TYPE.ID])
         if op == 'X':
-            p = parser.Parser(linedata)
-            t, recordId = p.readToken([parser.TOKEN_TYPE.ID])
-            rec = self.records[recordId]
-            keysFound = False
+            data = []
             while p.remaining:
                 t, key = p.readToken([parser.TOKEN_TYPE.KEY, parser.TOKEN_TYPE.LINEEND])
                 if t == parser.TOKEN_TYPE.LINEEND:
                     break
                 else:
-                    keysFound = True
-                    rec.pop(key)
-            if not keysFound:
-                self.records.pop(recordId)
+                    data.append(key)
             
         elif op in 'NUID':
-            record = self._parseRecordData(linedata)
-            recordId = record.id
-            if op in 'NU':
-                self.records.setdefault(record.id, record).update(record)
-            elif op == 'I':
-                if record.id in self.records:
-                    rec = self.records[record.id]
-                    for key, value in record.items():
-                        rec.setdefault(key, 0)
-                        rec[key] += value
-            elif op == 'D':
-                if record.id in self.records:
-                    rec = self.records[record.id]
-                    for key, value in record.items():
-                        rec.setdefault(key, 0)
-                        rec[key] -= value
-        return op, ts, recordId
+            data = self._parseRecordData(p.remaining)
+        else:
+            data = None
+        # ts = int(ts)
+        return op, ts, recordId, data
+    
+    def applyOperation(self, op, records, recordId, data):
+        if op == 'X':
+            rec = records.get(recordId)
+            if rec:
+                if data:
+                    for key in data:
+                        rec.pop(key)
+                else:
+                    records.pop(recordId)
+            
+        elif op in 'NU':
+            rec = records.setdefault(recordId, Record())
+            rec.id = recordId
+            rec.update(data)
+        elif op == 'I':
+            if recordId in records:
+                rec = records[recordId]
+                for key, value in data.items():
+                    rec.setdefault(key, 0)
+                    rec[key] += data[key]
+        elif op == 'D':
+            if recordId in records:
+                rec = records[recordId]
+                for key, value in data.items():
+                    rec.setdefault(key, 0)
+                    rec[key] -= data[key]
     
     def _parseRecordData(self, line):
         p = parser.Parser(line)
-        record = Record()
+        record = {}
 
-        t, record.id = p.readToken([parser.TOKEN_TYPE.ID])
+        # t, record.id = p.readToken([parser.TOKEN_TYPE.ID])
 
         while p.remaining:
             # End of line?
@@ -209,16 +224,24 @@ class NexusFile:
 
         return record
     
-    def readRecord(self):
+    def parseNextRecord(self):
         line = self._file.readline()
         if line:
-            op, ts, recordId = self._parseOpLine(line)
-            if op == '*':
-                return True
-            return self.records.get(recordId, None)
+            return self._parseOpLine(line)
+        else:
+            raise EndOfRecords()
+    
+    def readRecord(self):
+        op, ts, recordId, data = self.parseNextRecord()
+        if op == '*':
+            return ts, None
+        else:
+            self.applyOperation(op, self.records, recordId, data)
+        return ts, self.records.get(recordId, None)
     
     def readAll(self):
-        while True:
-            record = self.readRecord()
-            if record is None:
-                break
+        try:
+            while True:
+                ts, record = self.readRecord()
+        except EndOfRecords:
+            pass

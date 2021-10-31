@@ -12,6 +12,7 @@ def test_single_db_entry():
         f.close()
 
         db = NexusDB(tempdir)
+        db.readAll()
         db.get("1", "foo")
         assert db.get("1", "foo") == "Hello, World!"
 
@@ -26,8 +27,24 @@ def test_simple_combination_entry():
         f.close()
 
         db = NexusDB(tempdir)
+        db.readAll()
         assert db.get("1", "foo") == "Hello, World!"
         assert db.get("1", "bar") == "Goodbye, World!"
+
+def test_multi_order_entry():
+    with TemporaryDirectory() as tempdir:
+        f = open(os.path.join(tempdir, "1.nexus"), "w")
+        f.write('N 100 1 foo="Hello, World!"\n')
+        f.write('N 200 1 foo="Hey, World!"\n')
+        f.close()
+
+        f = open(os.path.join(tempdir, "2.nexus"), "w")
+        f.write('N 150 1 foo="Goodbye, World!"\n')
+        f.close()
+
+        db = NexusDB(tempdir)
+        db.readAll()
+        assert db.get("1", "foo") == "Hey, World!"
 
 def test_db_record_write():
     with TemporaryDirectory() as tempdir:
@@ -36,4 +53,7 @@ def test_db_record_write():
         print(db._write_file_path)
         print(open(db._write_file_path).read())
         print(db._read_file_paths)
+
+        db = NexusDB(tempdir)
+        db.readAll()
         assert db.get("ID-1", "name") == "Bobby Tables"
