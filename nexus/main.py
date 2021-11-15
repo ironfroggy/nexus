@@ -28,6 +28,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('path', type=str, action='store')
     parser.add_argument('command', type=str, action='store')
+    parser.add_argument('--key-size', type=int, action='store', default=5, dest='key_size')
     args, remaining = parser.parse_known_args()
 
     if args.command in RECORD_COMMANDS:
@@ -97,7 +98,7 @@ def main():
                         printRecord(nf, recordId, fields)
         elif args.command == 'create':
             if recordArgs.id.endswith('-'):
-                rndPostfix = base64.encodebytes(uuid.uuid4().bytes)[:-3].decode('ascii')
+                rndPostfix = base64.encodebytes(uuid.uuid4().bytes)[:-3].decode('ascii')[:args.key_size]
                 newId = recordArgs.id + rndPostfix
             else:
                 newId = recordArgs.id 
